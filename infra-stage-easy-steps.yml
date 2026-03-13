@@ -1,0 +1,32 @@
+trigger: none
+
+pool: infra_pool
+
+name: infra-jobs-pipeline
+
+variables:
+- group: INFRACOST_API_KEY
+
+stages:
+  - stage: InfraCost
+    displayName: 'Stage: Terraform Infra Cost'
+    jobs:
+      - job: InfraCost
+        displayName: 'Terraform Cost Estimation'
+        steps:
+        - task: TerraformTaskV4@4
+          displayName: Terraform Init
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            workingDirectory: '$(System.DefaultWorkingDirectory)'
+            environmentServiceNameAzureRM: 'infra_pipeline'
+
+        - powershell: |
+            terraform show tfplan
+            displayName: "Debug: Show Terraform Plan"
+            $env:INFRACOST_API_KEY = "$(INFRACOST_API_KEY)"
+            infracost breakdown --path tfplan --format table
+          displayName: "Show Infracost in Pipeline Logs"
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+
